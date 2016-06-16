@@ -1,0 +1,30 @@
+#!/bin/bash
+
+
+Arg1="${1}"
+
+case ${Arg1} in
+[4]*)
+  Arg1=4
+  ;;
+[6]*)
+  Arg1=6
+  ;;
+*)
+  echo 'Invalid ip version given. Please give either a 4 or a 6.'
+  exit 2
+esac
+
+
+  curl --ipv${Arg1} -s 'https://www.whatismyip.com/'\
+  --user-agent "No UserAgent for you\!" |\
+  grep 'Your IP Address' |\
+  tr '#' '\n'  |\
+  sed 's/;.*//' |\
+	while read a b; do
+  	    if [[ "${b}" == "" ]]
+	    then 
+		xxd -r <<<"0x$( printf "%x\n" "${a}")"
+	    fi
+ 	done
+ echo ''

@@ -1,0 +1,89 @@
+#!/usr/bin/python
+
+import shutil
+import os
+import sys
+import hashlib
+import md5
+
+masterDir=sys.argv[1]
+slaveDir=sys.argv[2]
+
+
+def dirCheck(filePathMaster, filePathSlave):
+   
+   if os.path.isdir(filePathSlave):
+      if os.listdir(filePathSlave) == []:
+         os.rmdir(filePathSlave)
+	
+   if os.path.isdir(filePathMaster) and os.path.isdir(filePathSlave):
+      print('These are dirs ')
+
+      for file in os.listdir(filePathMaster):
+    
+             masterDirFilePath=(filePathMaster + '/' + file)
+             slaveDirFilePath=(filePathSlave + '/' + file)
+	     
+	     if os.path.islink(masterDirFilePath):
+		print(masterDirFilePath + ' is a link')
+		sys.exit(5)
+
+	     if os.path.islink(slaveDirFilePath):
+                print(slaveDirFilePath + ' is a link')
+                sys.exit(6)
+
+             dirCheck(masterDirFilePath, slaveDirFilePath)
+	     
+	     if os.path.isfile(masterDirFilePath) and os.path.isfile(slaveDirFilePath):
+                print(masterDirFilePath + ' and ' + slaveDirFilePath+' are file\'s') 
+		
+
+		if os.stat(masterDirFilePath).st_size == os.stat(slaveDirFilePath).st_size:
+			openMaster=open(masterDirFilePath, 'rb')
+			openSlave=open(slaveDirFilePath, 'rb')
+
+			if openMaster.read(1024) == openSlave.read(1024):
+			   hashMaster=md5.new()
+			   hashMaster.update(openMaster.read())
+			   hashMasterText=hashMaster.hexdigest()
+		   
+			   hashSlave=md5.new()
+			   hashSlave.update(openMaster.read())
+			   hashSlaveText=hashMaster.hexdigest()
+		   
+			   print(hashMasterText)
+			   print(hashSlaveText)
+
+			   if hashMasterText == hashSlaveText:
+			      print(masterDirFilePath + ' and ' + slaveDirFilePath + ' are the same.')
+			      os.remove(slaveDirFilePath)
+			   else:
+			      print('different hash\'s')
+			      sys.exit(7)
+			else:
+			   print('dif 1024')
+			   sys.exit(8)
+            	else:
+            	    print(masterDirFilePath + ' and ' + slaveDirFilePath + ' are not the same file.') 
+		    sys.exit(9)
+
+      for file in os.listdir(filePathSlave):
+	  masterFilePath=(filePathMaster + '/' + file)
+          slaveFilePath=(filePathSlave + '/' + file)
+	  
+	  if os.path.isfile(masterFilePath) == False and os.path.isfile(slaveFilePath):
+                print(slaveFilePath + ' is not present in slave dir.')
+		shutil.move(slaveFilePath, masterFilePath)		
+
+   elif os.path.isdir(filePathMaster) and os.path.isdir(filePathSlave) == False:
+      print(filePathSlave + ' is not a directory')
+      
+   elif os.path.isdir(filePathMaster) == False and os.path.isdir(filePathSlave):
+      print(filePathMaster + ' is not a directory')   
+
+   else:
+      print('Continuing')
+
+
+dirCheck(masterDir, slaveDir)
+

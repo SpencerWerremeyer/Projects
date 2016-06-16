@@ -1,0 +1,38 @@
+#!/bin/bash
+
+find timeStuff -name '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]' -type f | while read file
+do
+
+	UtimeStarted="$( stat -f '%B' "${file}" )"
+	UtimeEnded="$( cat "${file}" )"
+	math="$(((${UtimeEnded}) - (${UtimeStarted})))"
+	MtimeAtWork="$((${math} / 60 % 60))"
+	HtimeAtWork="$((${math} / 3600))"
+
+	echo ${MtimeAtWork}
+	echo ${HtimeAtWork}
+	echo ${UtimeStarted}
+	echo ${UtimeEnded}
+
+
+	if [ "${MtimeAtWork}" -ge 10 ] && [ "${MtimeAtWork}" -le 22 ]
+	then 
+		dec='.25'
+		echo "Total time at work ${HtimeAtWork}${dec}"
+
+	elif [ "${MtimeAtWork}" -ge 23 ] && [ "${MtimeAtWork}" -le 37 ]
+	then 
+	        dec='.5'
+		echo "Total time at work ${HtimeAtWork}${dec}"
+
+	elif [ "${MtimeAtWork}" -ge 38 ] && [ "${MtimeAtWork}" -le 52 ]
+	then
+	        dec='.75'
+		echo "Total time at work ${HtimeAtWork}${dec}"
+
+	elif [ "${MtimeAtWork}" -ge 53 ] && [ "${MtimeAtWork}" -le 59 ]
+	then
+		let "HtimeAtWork += 1"
+	        echo "Total time at work ${HtimeAtWork}${dec}" 
+	fi
+done
