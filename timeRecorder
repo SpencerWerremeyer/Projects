@@ -11,11 +11,12 @@ do
 
 	echo ${MtimeAtWork}
 	echo ${HtimeAtWork}
-	echo ${UtimeStarted}
-	echo ${UtimeEnded}
 
+	if [ "${MtimeAtWork}" -le 10 ]
+	then
+		echo "Total time at work ${HtimeAtWork}"
 
-	if [ "${MtimeAtWork}" -ge 10 ] && [ "${MtimeAtWork}" -le 22 ]
+	elif [ "${MtimeAtWork}" -ge 10 ] && [ "${MtimeAtWork}" -le 22 ]
 	then 
 		dec='.25'
 		echo "Total time at work ${HtimeAtWork}${dec}"
