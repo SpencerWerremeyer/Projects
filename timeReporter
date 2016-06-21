@@ -2,7 +2,6 @@
 
 find timeStuff -name '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]' -type f | while read file
 do
-
 	UtimeStarted="$( stat -f '%B' "${file}" )"
 	UtimeEnded="$( cat "${file}" )"
 	math="$(((${UtimeEnded}) - (${UtimeStarted})))"
@@ -11,7 +10,8 @@ do
 
 	echo ${MtimeAtWork}
 	echo ${HtimeAtWork}
-
+	echo $(date -r${UtimeStarted})
+	
 	if [ "${MtimeAtWork}" -le 10 ]
 	then
 		echo "Total time at work ${HtimeAtWork}"

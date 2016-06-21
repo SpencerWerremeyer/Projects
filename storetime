@@ -1,9 +1,8 @@
 #!/bin/bash
 
 #if ( ipfetch 4 == "12.148.110.34" > /dev/null  )
-if ( /sbin/ifconfig en0 | grep "inet 10.2.225.2 netmask 0xffff0000 broadcast 10.2.255.255" > /dev/null )
-then 
-	echo "$(date +%s)" > timeStuff/"$(date +%Y%m%d)"
+/sbin/ifconfig en0 | grep "inet 10.2.225.2 netmask 0xffff0000 broadcast 10.2.255.255" -q \
+&& arp -an | grep "(10.2.0.1) at bc:c4:93:c7:3e:c6" -q \
+&& echo "$(date +%s)" > timeStuff/"$(date +%Y%m%d)"
 
-fi
             
