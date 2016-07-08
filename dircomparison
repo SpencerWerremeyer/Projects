@@ -5,19 +5,50 @@ import os
 import sys
 import hashlib
 import md5
+import optparse
+import logging
 
-masterDir=sys.argv[1]
-slaveDir=sys.argv[2]
+usage = "usage: %prog give the program the name of two directories arg1 arg2 [options]"
+parser = optparse.OptionParser(usage=usage)
+parser.add_option("-u","--usage", action="store_true", dest="optionUsage", help="show a list availible options")
+parser.add_option("-v","--verbose", action="store_true", dest="verbose", default=False, help="Set program to print")
+parser.add_option("-d","--dry-run", action="store_true", dest="dryRun", default=False,  help="Runs program in verbose mode but does not delete files.")
 
+(options, args) = parser.parse_args()
+
+syntaxError = "SYNTAX ERROR: "
+
+def usage():
+	pattern = 'Option'
+	count = 0
+	start = 0
+	flag = True 
+	optionList = parser.option_list
+	strOptionList = str(optionList)
+	greaterThanFind = 0	
+	while flag:
+		a = strOptionList.find(pattern,start)
+		
+		if a == -1:
+			flag = False
+		else:
+			count+=1
+			start=a+1
+			dashFind = strOptionList.find('-', greaterThanFind)
+			greaterThanFind = strOptionList.find('>', greaterThanFind + 1)
+			options = strOptionList[dashFind:greaterThanFind]
+			print(options)
+	sys.exit(10)
 
 def dirCheck(filePathMaster, filePathSlave):
-   
+   	
    if os.path.isdir(filePathSlave):
       if os.listdir(filePathSlave) == []:
-         os.rmdir(filePathSlave)
+         if options.dryRun == False:
+		os.rmdir(filePathSlave)
 	
    if os.path.isdir(filePathMaster) and os.path.isdir(filePathSlave):
-      print('These are dirs ')
+      logging.info('These are dirs ')
 
       for file in os.listdir(filePathMaster):
     
@@ -25,17 +56,16 @@ def dirCheck(filePathMaster, filePathSlave):
              slaveDirFilePath=(filePathSlave + '/' + file)
 	     
 	     if os.path.islink(masterDirFilePath):
-		print(masterDirFilePath + ' is a link')
-		sys.exit(5)
-
+		logging.warning(syntaxError + masterDirFilePath + ' is a link')
+		usage()
 	     if os.path.islink(slaveDirFilePath):
-                print(slaveDirFilePath + ' is a link')
-                sys.exit(6)
+                logging.warning(syntaxError + islaveDirFilePath + ' is a link')
+                usage()
 
              dirCheck(masterDirFilePath, slaveDirFilePath)
 	     
 	     if os.path.isfile(masterDirFilePath) and os.path.isfile(slaveDirFilePath):
-                print(masterDirFilePath + ' and ' + slaveDirFilePath+' are file\'s') 
+                logging.info(masterDirFilePath + ' and ' + slaveDirFilePath+' are file\'s') 
 		
 
 		if os.stat(masterDirFilePath).st_size == os.stat(slaveDirFilePath).st_size:
@@ -51,39 +81,64 @@ def dirCheck(filePathMaster, filePathSlave):
 			   hashSlave.update(openMaster.read())
 			   hashSlaveText=hashMaster.hexdigest()
 		   
-			   print(hashMasterText)
-			   print(hashSlaveText)
+			   logging.info("Master File hash: " + hashMasterText)
+			   logging.info("Slave File hash: " + hashSlaveText)
 
 			   if hashMasterText == hashSlaveText:
-			      print(masterDirFilePath + ' and ' + slaveDirFilePath + ' are the same.')
-			      os.remove(slaveDirFilePath)
+			      logging.info(masterDirFilePath + ' and ' + slaveDirFilePath + ' are the same. Removing ' + slaveDirFilePath)
+			      if options.dryRun == False:
+					os.remove(slaveDirFilePath)
 			   else:
-			      print('different hash\'s')
-			      sys.exit(7)
+			      logging.warning(syntaxError + 'different hash\'s')
+			      usage()
 			else:
-			   print('dif 1024')
-			   sys.exit(8)
+			   logging.warning(syntaxError + masterDirFilePath + " and " + slaveDirFilePath + " have different contents")
+			   usage()
             	else:
-            	    print(masterDirFilePath + ' and ' + slaveDirFilePath + ' are not the same file.') 
-		    sys.exit(9)
+            	    logging.warning(syntaxError + masterDirFilePath + ' and ' + slaveDirFilePath + ' are not the same file.') 
+		    usage()
 
       for file in os.listdir(filePathSlave):
 	  masterFilePath=(filePathMaster + '/' + file)
           slaveFilePath=(filePathSlave + '/' + file)
 	  
 	  if os.path.isfile(masterFilePath) == False and os.path.isfile(slaveFilePath):
-                print(slaveFilePath + ' is not present in slave dir.')
-		shutil.move(slaveFilePath, masterFilePath)		
+                logging.info(slaveFilePath + ' is not present in master dir. Moving to master dir.')
+		if options.dryRun == False:
+			shutil.move(slaveFilePath, masterFilePath)		
 
    elif os.path.isdir(filePathMaster) and os.path.isdir(filePathSlave) == False:
-      print(filePathSlave + ' is not a directory')
+      logging.warning(filePathSlave + ' is not a directory')
       
    elif os.path.isdir(filePathMaster) == False and os.path.isdir(filePathSlave):
-      print(filePathMaster + ' is not a directory')   
+      logging.warning(filePathMaster + ' is not a directory')   
 
-   else:
-      print('Continuing')
 
+   if os.path.isdir(filePathSlave):
+      if os.listdir(filePathSlave) == []:
+         if options.dryRun == False:
+		os.rmdir(filePathSlave)
+
+
+if options.optionUsage == True:
+	usage()
+
+if options.dryRun == True:
+        options.verbose = True
+
+
+logging.basicConfig(level=logging.WARNING if not options.verbose else logging.INFO, format="%(message)s")
+
+if options.verbose == True:
+	try:
+		masterDir=sys.argv[2]
+		slaveDir=sys.argv[3]
+	except IndexError:
+		logging.warning(syntaxError + "two directories are reqired to run this program")
+		usage()
+else:
+	masterDir=sys.argv[1]
+	slaveDir=sys.argv[2]
 
 dirCheck(masterDir, slaveDir)
 
