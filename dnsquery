@@ -1,0 +1,87 @@
+#!/usr/bin/python
+
+
+import dns.resolver
+import re
+import sys
+
+resolver = dns.resolver.Resolver()
+domain = sys.argv[1]
+nameServer = "8.8.8.8"
+domainList = []
+splitList = []
+resolver.nameservers = [nameServer]
+
+ipv4List = []
+splitIpv4 = []
+
+ipv6List = []
+splitIpv6 = []
+depth = 0
+
+#searches a domain
+def domainSearch(domainCheck):
+	global depth
+	if depth <= 50:
+		#searches for TXT records
+		responses = resolver.query(domainCheck, "TXT")
+		
+		#goes through each response
+		for rdata in responses:
+			#checks if records are spf
+			if 'spf2.0/pra' or 'v=spf1' in str(rdata).split(' ')[0]:
+				rdataString = str(rdata)
+				splitString = (rdataString.split())
+
+				#looks for ipv4 addresses and adds them to a list
+				if any("ip4:" in stringSegment for stringSegment in splitString):
+					global ipv4
+					ipv4 = (" ".join(stringSegment for stringSegment in splitString if 'ip4' in stringSegment))
+					noIpv4 = ipv4.replace("ip4:", "")
+					splitIpv4.extend(noIpv4.split())
+
+					for ipv4Address in splitIpv4[:]:
+						if ipv4Address not in ipv4List:
+							ipv4List.append(ipv4Address)
+					
+				#looks for ipv6 addresses and adds them to a list 
+				if any("ip6:" in stringSegment for stringSegment in splitString):
+					ipv6 = (" ".join(stringSegment for stringSegment in splitString if 'ip6' in stringSegment))
+					noIpv6 = ipv6.replace("ip6:", "")
+					splitIpv6.extend(noIpv6.split())
+
+					for ipv6Address in splitIpv6[:]:
+						if ipv6Address not in ipv6List:
+							ipv6List.append(ipv6Address)
+
+				#looks for domains and adds them to a list 
+				if any("include:" in stringSegment for stringSegment in splitString):
+					domains = (" ".join(stringSegment for stringSegment in splitString if 'include' in stringSegment))
+					noInclude = domains.replace("include:", "")
+					splitList.extend(noInclude.split())
+
+					for specificDomain in splitList[:]:
+						if specificDomain not in domainList:
+							domainList.append(specificDomain)	
+				
+				try:
+					depth += 1
+					domainSearch(domainList[depth-1])
+
+				except:
+					depth -= 1
+	else:
+		print("in to deep")
+
+domainSearch(domain)
+#print(len(splitIpv4))
+#print(len(splitIpv6))
+#print(len(domainList))
+print("ip4:" + (" ip4:".join(ipv4List)))
+print("ip6:" + (" ip6:".join(ipv6List)))
+#print(domainList)
+
+
+
+
+
