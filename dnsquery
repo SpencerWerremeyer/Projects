@@ -17,71 +17,116 @@ splitIpv4 = []
 
 ipv6List = []
 splitIpv6 = []
+
+mxList = []
+aResponseList = []
+quadAResponseList = []
+
+toDeep = False
+maxDepth = 50
 depth = 0
 
 #searches a domain
-def domainSearch(domainCheck):
-	global depth
-	if depth <= 50:
-		#searches for TXT records
-		responses = resolver.query(domainCheck, "TXT")
+def domainSearch(domainCheck, depth):
+	
+	#searches for TXT records
+	responses = resolver.query(domainCheck, "TXT")
+	
+	#goes through each response
+	for currentRecord in responses:
 		
-		#goes through each response
-		for rdata in responses:
-			#checks if records are spf
-			if 'spf2.0/pra' or 'v=spf1' in str(rdata).split(' ')[0]:
-				rdataString = str(rdata)
-				splitString = (rdataString.split())
+		#checks if records are spf
+		if 'spf2.0/pra' or 'v=spf1' is str(currentRecord).split(' ')[0]:
+			currentRecordString = str(currentRecord)
+			splitString = (currentRecordString.split())
 
-				#looks for ipv4 addresses and adds them to a list
-				if any("ip4:" in stringSegment for stringSegment in splitString):
-					global ipv4
-					ipv4 = (" ".join(stringSegment for stringSegment in splitString if 'ip4' in stringSegment))
-					noIpv4 = ipv4.replace("ip4:", "")
-					splitIpv4.extend(noIpv4.split())
+			#looks for ipv4 addresses and adds them to a list
+			if any("ip4:" in stringSegment for stringSegment in splitString):
+				ipv4 = (" ".join(stringSegment for stringSegment in splitString if 'ip4' in stringSegment))
+				noIpv4 = ipv4.replace("ip4:", "")
+				splitIpv4.extend(noIpv4.split())
 
-					for ipv4Address in splitIpv4[:]:
-						if ipv4Address not in ipv4List:
-							ipv4List.append(ipv4Address)
-					
-				#looks for ipv6 addresses and adds them to a list 
-				if any("ip6:" in stringSegment for stringSegment in splitString):
-					ipv6 = (" ".join(stringSegment for stringSegment in splitString if 'ip6' in stringSegment))
-					noIpv6 = ipv6.replace("ip6:", "")
-					splitIpv6.extend(noIpv6.split())
-
-					for ipv6Address in splitIpv6[:]:
-						if ipv6Address not in ipv6List:
-							ipv6List.append(ipv6Address)
-
-				#looks for domains and adds them to a list 
-				if any("include:" in stringSegment for stringSegment in splitString):
-					domains = (" ".join(stringSegment for stringSegment in splitString if 'include' in stringSegment))
-					noInclude = domains.replace("include:", "")
-					splitList.extend(noInclude.split())
-
-					for specificDomain in splitList[:]:
-						if specificDomain not in domainList:
-							domainList.append(specificDomain)	
+				#checks list for ipv4 address. If it is not in the list it adds it.
+				for ipv4Address in splitIpv4[:]:
+					if ipv4Address not in ipv4List:
+						ipv4List.append(ipv4Address)
 				
-				try:
-					depth += 1
-					domainSearch(domainList[depth-1])
+			#looks for ipv6 addresses and adds them to a list 
+			if any("ip6:" in stringSegment for stringSegment in splitString):
+				ipv6 = (" ".join(stringSegment for stringSegment in splitString if 'ip6' in stringSegment))
+				noIpv6 = ipv6.replace("ip6:", "")
+				splitIpv6.extend(noIpv6.split())
 
-				except:
-					depth -= 1
-	else:
-		print("in to deep")
+				#checks list for ipv6 address. If it is not in the list it adds it.
+				for ipv6Address in splitIpv6[:]:
+					if ipv6Address not in ipv6List:
+						ipv6List.append(ipv6Address)
 
-domainSearch(domain)
-#print(len(splitIpv4))
-#print(len(splitIpv6))
-#print(len(domainList))
-print("ip4:" + (" ip4:".join(ipv4List)))
-print("ip6:" + (" ip6:".join(ipv6List)))
-#print(domainList)
+			if any("mx" in stringSegment for stringSegment in splitString):
+				mxLookUp(domain)
+
+			#looks for domains and adds them to a list 
+			if any("include:" in stringSegment for stringSegment in splitString):
+				domains = (" ".join(stringSegment for stringSegment in splitString if 'include' in stringSegment))
+				noInclude = domains.replace("include:", "")
+				splitList.extend(noInclude.split())
+				
+				#checks list for a domain. If it is not in the list it adds it.
+				for specificDomain in splitList[:]:
+					if specificDomain not in domainList:
+						domainList.append(specificDomain)	
+			
+			try:
+				depthCheck(depth)
+				depth += 1
+				domainSearch(domainList[depth-1], depth)
+			except:
+				depth -= 1
 
 
+def mxLookUp(domain):
+	mxResponses = dns.resolver.query(domain, 'MX')
+	for response in mxResponses:
+		mxRecord = str(response).split()[1]
+		if mxRecord not in mxList:
+			mxList.append(mxRecord)
+		for record in mxList:
+			aRecordLookUp(record)
+			quadARecordLookUp(record)
+
+def aRecordLookUp(domain):
+	aResponses = dns.resolver.query(domain, 'A')
+	for response in aResponses:
+		aRecord = str(response)
+		if aRecord not in aResponseList:
+			aResponseList.append(aRecord)
+	
+def quadARecordLookUp(domain):
+	quadAResponses = dns.resolver.query(domain, 'AAAA')
+	for response in quadAResponses:
+		quadARecord = str(response)
+		if quadARecord not in quadAResponseList:
+			quadAResponseList.append(quadARecord)
+
+def depthCheck(currentDepth):
+	if currentDepth >= maxDepth:
+		global toDeep
+		toDeep = True
+	assert currentDepth <= maxDepth 
+
+domainSearch(domain, depth)
+#mxLookUp(domain)
+#if toDeep:
+#	print("Maximum Depth Was Reached")
+
+print(len(ipv4List))
+print(len(ipv6List))
+print((mxList))
+print((aResponseList))
+print((quadAResponseList))
+
+#print("ip4:" + (" ip4:".join(ipv4List)))
+#print("ip6:" + (" ip6:".join(ipv6List)))
 
 
-
+#mxLookUp(domain)
