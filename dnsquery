@@ -4,30 +4,45 @@
 import dns.resolver
 import re
 import sys
+import optparse
+import logging
 
-resolver = dns.resolver.Resolver()
-domain = sys.argv[1]
-nameServer = "8.8.8.8"
-domainList = []
-splitList = []
-resolver.nameservers = [nameServer]
+usage = "usage: %prog give the program a DNS a Name Server IP and a maximum recursion depth. [options]"
+parser = optparse.OptionParser(usage=usage)
+parser.add_option("-u","--usage", action = "store_true", dest = "optionUsage", help = "Show List of Options")
+parser.add_option("-v","--verbose", action = "store_true", dest = "verbose", default = False, help = "Turn On program output")
 
-ipv4List = []
-splitIpv4 = []
+(options, args) = parser.parse_args()
 
-ipv6List = []
-splitIpv6 = []
 
-mxList = []
-aResponseList = []
-quadAResponseList = []
+def usage():
+	pattern = 'Option'
+	count = 0
+	start = 0
+	flag = True
+	optionList = parser.option_list
+	strOptionList = str(optionList)
+	greaterThanFind = 0
+	while flag:
+		a = strOptionList.find(pattern, start)
 
-toDeep = False
-maxDepth = 50
-depth = 0
+		if a == -1:
+			flag = False
+		else:
+			count += 1
+			start = a + 1
+			dashFind = strOptionList.find('-', greaterThanFind)
+			greaterThanFind = strOptionList.find('>', greaterThanFind + 1)
+			options = strOptionList[dashFind:greaterThanFind]
+			print(options)
+	sys.exit(10)
+
 
 #searches a domain
-def domainSearch(domainCheck, depth):
+def domainSearch(domainCheck, counter, depth=0):
+	
+	print(depth)
+	depthCheck(depth)
 	
 	#searches for TXT records
 	responses = resolver.query(domainCheck, "TXT")
@@ -75,13 +90,11 @@ def domainSearch(domainCheck, depth):
 				for specificDomain in splitList[:]:
 					if specificDomain not in domainList:
 						domainList.append(specificDomain)	
-			
 			try:
-				depthCheck(depth)
-				depth += 1
-				domainSearch(domainList[depth-1], depth)
+				counter += 1
+				domainSearch(domainList[counter-1], counter, depth=depth+1)
 			except:
-				depth -= 1
+				counter -= 1
 
 
 def mxLookUp(domain):
@@ -109,24 +122,72 @@ def quadARecordLookUp(domain):
 			quadAResponseList.append(quadARecord)
 
 def depthCheck(currentDepth):
-	if currentDepth >= maxDepth:
+	if currentDepth > maxDepth:
 		global toDeep
 		toDeep = True
-	assert currentDepth <= maxDepth 
+	assert currentDepth < maxDepth 
 
-domainSearch(domain, depth)
-#mxLookUp(domain)
-#if toDeep:
-#	print("Maximum Depth Was Reached")
+
+if options.optionUsage == True:
+	usage()
+
+logging.basicConfig(level = logging.WARNING if not options.verbose else logging.INFO, format = "%(message)s")
+
+if options.verbose == True:
+	
+	try:
+		domain = sys.argv[2]
+		nameServer = sys.argv[3]
+	except IndexError:
+		logging.warning("SYNTAX ERROR: This program requires both a domain and a name server to execute.")
+		usage()
+	try:
+		maxDepth = int(sys.argv[4])
+	except:
+		logging.warning("Either no max depth was set or it was invalid.  Max depth was defaulted to 50.")
+		maxDepth = 50
+else:
+	try:
+		domain = sys.argv[1]
+		nameServer = sys.argv[2]
+	except IndexError:
+                logging.warning("SYNTAX ERROR: This program requires both a domain and a name server to execute.")
+                usage()
+	try:
+        	maxDepth = int(sys.argv[3])
+	except:
+		logging.warning("Either no max depth was set or it was invalid.  Max depth was defaulted to 50.")
+        	maxDepth = 50
+
+
+resolver = dns.resolver.Resolver()
+domainList = []
+splitList = []
+resolver.nameservers = [nameServer]
+
+ipv4List = []
+splitIpv4 = []
+
+ipv6List = []
+splitIpv6 = []
+
+mxList = []
+aResponseList = []
+quadAResponseList = []
+
+toDeep = False
+
+counter = 0
+
+domainSearch(domain, counter)
+
+if toDeep:
+	logging.warning("Maximum Depth Was Reached")
 
 print(len(ipv4List))
 print(len(ipv6List))
-print((mxList))
-print((aResponseList))
-print((quadAResponseList))
+logging.info("ipv4:" + (" ipv4:".join(ipv4List))+'\n')
+logging.info("ipv6:" + (" ipv6:".join(ipv6List))+'\n')
+logging.info(aResponseList)
+logging.info(quadAResponseList)
 
-#print("ip4:" + (" ip4:".join(ipv4List)))
-#print("ip6:" + (" ip6:".join(ipv6List)))
-
-
-#mxLookUp(domain)
