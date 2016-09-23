@@ -41,7 +41,6 @@ def usage():
 #searches a domain
 def domainSearch(domainCheck, counter, depth=0):
 	
-	print(depth)
 	depthCheck(depth)
 	
 	#searches for TXT records
@@ -126,8 +125,70 @@ def depthCheck(currentDepth):
 		global toDeep
 		toDeep = True
 	assert currentDepth < maxDepth 
+#format ipv4 records into standard output
+def ipv4Formatter(formatCounter, addressList, spfNumber):
 
 
+	spfFormat = "v=spf1"
+	nextRecordSet =  " include:_spf"+ str(int(spfNumber)) +".riskanalytics.com"
+
+	for i in addressList:
+		if len(spfFormat + " ipv4:" + i)+len(nextRecordSet) <= 255:
+			spfFormat = spfFormat + " ipv4:" + i
+			formatCounter += 1
+		else:
+			if spfNumber < 1:
+				spfNumber += 1
+				spfFormat = spfFormat + nextRecordSet
+				print("_spf.riskanalytics.com.     IN    TXT  \"" + spfFormat + "\"")
+				print('here')
+
+			else:
+				print('here')
+				spfNumber += 1
+				spfFormat = spfFormat + nextRecordSet
+				print("_spf"+str(int(spfNumber))+".riskanalytics.com.     IN    TXT  \"" + spfFormat + "\"")
+			break
+	x = 0
+	while x <= formatCounter:
+		if len(addressList) >= x:
+			addressList.pop(0)
+			x += 1
+		else:
+			break
+			
+	if len(addressList) >= 1:
+		ipv4Formatter(0, addressList, spfNumber)
+
+
+#format ipv6 records into standard output
+def ipv6Formatter(formatCounter, addressList, spfNumber):
+
+        spfFormat = "v=spf1"
+        nextRecordSet =  " include:_spf"+ str(int(spfNumber)) +".riskanalytics.com"
+
+        for i in addressList:
+                if len(spfFormat + " ipv6:" + i)+len(nextRecordSet) <= 255:
+                        spfFormat = spfFormat + " ipv6:" + i
+                        formatCounter += 1
+                else:
+                        spfFormat = spfFormat + nextRecordSet
+                        spfNumber += 1
+                        print("riskanalytics.com.     IN    TXT  \"" + spfFormat + "\"")
+                        break
+        x = 0
+        while x <= formatCounter:
+                if len(addressList) >= x:
+                        addressList.pop(0)
+                        x += 1
+                else:
+                        break
+
+        if len(addressList) >= 1:
+                ipv6Formatter(0, addressList, spfNumber)
+
+
+		
 if options.optionUsage == True:
 	usage()
 
@@ -178,14 +239,21 @@ quadAResponseList = []
 toDeep = False
 
 counter = 0
+ipv4ListCopy = ipv4List
+ipv6ListCopy = ipv6List
+spfNumber = 0
 
 domainSearch(domain, counter)
 
 if toDeep:
 	logging.warning("Maximum Depth Was Reached")
 
-print(len(ipv4List))
-print(len(ipv6List))
+
+
+ipv4Formatter(counter, ipv4ListCopy, spfNumber)
+ipv6Formatter(counter, ipv6ListCopy, spfNumber)
+
+
 logging.info("ipv4:" + (" ipv4:".join(ipv4List))+'\n')
 logging.info("ipv6:" + (" ipv6:".join(ipv6List))+'\n')
 logging.info(aResponseList)
