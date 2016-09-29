@@ -7,7 +7,7 @@ import sys
 import optparse
 import logging
 
-usage = "usage: %prog give the program a DNS a Name Server IP and a maximum recursion depth. [options]"
+usage = "usage: %prog give the program a DNS a Name Server IP and a maximum recursion depth. example: dnsquery google.com 8.8.8.8 50"
 parser = optparse.OptionParser(usage=usage)
 parser.add_option("-u","--usage", action = "store_true", dest = "optionUsage", help = "Show List of Options")
 parser.add_option("-v","--verbose", action = "store_true", dest = "verbose", default = False, help = "Turn On program output")
@@ -45,8 +45,11 @@ def domainSearch(domainCheck, counter, depth=0):
 	depthCheck(depth)
 	
 	#searches for TXT records
-	responses = resolver.query(domainCheck, "TXT")
-	
+	try:
+		responses = resolver.query(domainCheck, "TXT")
+	except:
+		logging.warning("An invalid domain was given.")
+		sys.exit(1)
 	#goes through each response
 	for currentRecord in responses:
 		
@@ -92,7 +95,6 @@ def domainSearch(domainCheck, counter, depth=0):
 						domainList.append(specificDomain)	
 			try:
 				counter += 1
-				depthCheck(depth)
 				domainSearch(domainList[counter-1], counter, depth=depth+1)
 			except:
 				counter -= 1
@@ -129,6 +131,7 @@ def quadARecordLookUp(domain):
 				quadAResponseList.append(quadARecord)
 	except:
 		return
+
 #sets the maximum depth of recursion
 def depthCheck(currentDepth):
 	if currentDepth > maxDepth:
@@ -152,8 +155,14 @@ def ipv4Formatter(formatCounter, addressList, spfNumber):
                         spfList.append(address)
 			spfNumber += 1
 			nextRecordSet =  " include:_spf"+ str(int(spfNumber)) + "." + str(domain)
-			spfList.append(nextRecordSet)
-			logging.warning("_spf"+str(int(spfNumber-1))+ "." + str(domain) +".     IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n") 
+			if len(ipv6List) != 0:
+				spfList.append(nextRecordSet)
+					
+			if spfNumber == 1:
+				logging.warning(str(domain) +".     IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n")
+			
+			else:
+				logging.warning("_spf"+str(int(spfNumber-1))+ "." + str(domain) +".     IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n") 
 			varSaver.append(spfNumber)
 			return
 
@@ -166,18 +175,20 @@ def ipv4Formatter(formatCounter, addressList, spfNumber):
 
 		#if not print the current list
 		else:
-			#if spfNumber is 0 then output 
+			#if spfNumber is 0 print to this format
 			if spfNumber == 0:
 				spfNumber += 1
 				nextRecordSet =  " include:_spf"+ str(int(spfNumber)) + "." + str(domain)
 				spfList.append(nextRecordSet)
 				logging.warning(str(domain) + ".           IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n")
+			#if spfNumber is not 0 print to this format
 			else:
 				spfNumber += 1
-				nextRecordSet =  " include:_spf"+ str(int(spfNumber)) + str(domain)
+				nextRecordSet =  " include:_spf"+ str(int(spfNumber)) + "." + str(domain)
 				spfList.append(nextRecordSet)
 				logging.warning("_spf"+str(int(spfNumber-1))+ "." + str(domain) +".     IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n")
 			
+			#remove used addresses from addressList
 			addressList = [ipAddress for ipAddress in addressList if ipAddress not in spfList]
 			break
 	
@@ -217,24 +228,29 @@ def ipv6Formatter(formatCounter, addressList, spfNumber):
 
 		#if not print the current list
                 else:
-                        if spfNumber < 1:
+			#if spfNumber is 0 print to this format
+                        if spfNumber == 0:
                                 spfNumber += 1
                                 nextRecordSet =  " include:_spf"+ str(int(spfNumber)) + "." + str(domain)
                                 spfList.append(nextRecordSet)
                                 logging.warning(str(domain) + ".           IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n")
-                        else:
+                        #if spfNumber is not 0 print to this format
+			else:
                                 spfNumber += 1
                                 nextRecordSet =  " include:_spf"+ str(int(spfNumber)) + "." + str(domain)
                                 spfList.append(nextRecordSet)
                                 logging.warning("_spf"+str(int(spfNumber-1))+ "." + str(domain) +".     IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n")
-
+			
+			#remove used addresses from addressList
                         addressList = [ipAddress for ipAddress in addressList if ipAddress not in spfList]
                         break
 
-
+	#if the addressList still has elements run it again
         if len(addressList) != 0:
                 ipv6Formatter(0, addressList, spfNumber)
-        else:
+        
+	#if addressList is empty add the value of spfNumber to a list to save its value
+	else:
                 varSaver.append(spfNumber)
 
 if options.optionUsage == True:
