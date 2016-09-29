@@ -92,6 +92,7 @@ def domainSearch(domainCheck, counter, depth=0):
 						domainList.append(specificDomain)	
 			try:
 				counter += 1
+				depthCheck(depth)
 				domainSearch(domainList[counter-1], counter, depth=depth+1)
 			except:
 				counter -= 1
@@ -107,102 +108,125 @@ def mxLookUp(domain):
 			aRecordLookUp(record)
 			quadARecordLookUp(record)
 
+#checks domains for A reocords
 def aRecordLookUp(domain):
-	aResponses = dns.resolver.query(domain, 'A')
-	for response in aResponses:
-		aRecord = str(response)
-		if aRecord not in aResponseList:
-			aResponseList.append(aRecord)
-	
-def quadARecordLookUp(domain):
-	quadAResponses = dns.resolver.query(domain, 'AAAA')
-	for response in quadAResponses:
-		quadARecord = str(response)
-		if quadARecord not in quadAResponseList:
-			quadAResponseList.append(quadARecord)
+	try:
+		aResponses = dns.resolver.query(domain, 'A')
+		for response in aResponses:
+			aRecord = str(response)
+			if aRecord not in aResponseList:
+				aResponseList.append(aRecord)
+	except:
+		return
 
+#checks domains for AAAA records	
+def quadARecordLookUp(domain):
+	try:
+		quadAResponses = dns.resolver.query(domain, 'AAAA')
+		for response in quadAResponses:
+			quadARecord = str(response)
+			if quadARecord not in quadAResponseList:
+				quadAResponseList.append(quadARecord)
+	except:
+		return
+#sets the maximum depth of recursion
 def depthCheck(currentDepth):
 	if currentDepth > maxDepth:
 		global toDeep
 		toDeep = True
-	assert currentDepth < maxDepth 
-#format ipv4 records into standard output
+	assert currentDepth < maxDepth
+ 
+#format and output ipv4 records into standard output
 def ipv4Formatter(formatCounter, addressList, spfNumber):
 
 	spfList = []
 	spfFormat = "v=spf1"
 	spfList.append(spfFormat)
-	nextRecordSet =  " include:_spf"+ str(int(spfNumber)) +".riskanalytics.com"
+	nextRecordSet =  " include:_spf"+ str(int(spfNumber)) + "." + str(domain)
+	
+	#go through every list element in addressList
 	for address in addressList:
+		#if the current address is the last in addressList output all values that are currently in spfList and exit function
 		if address == addressList[-1]:
 			spfList.append(" ipv4:")
                         spfList.append(address)
 			spfNumber += 1
-			nextRecordSet =  " include:_spf"+ str(int(spfNumber)) +".riskanalytics.com"
+			nextRecordSet =  " include:_spf"+ str(int(spfNumber)) + "." + str(domain)
 			spfList.append(nextRecordSet)
-			logging.warning("_spf"+str(int(spfNumber-1))+".riskanalytics.com.     IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n") 
+			logging.warning("_spf"+str(int(spfNumber-1))+ "." + str(domain) +".     IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n") 
 			varSaver.append(spfNumber)
 			return
-		
+
+		#if the address and formating are less than or equal to 255 add it to a list
 		if len(spfFormat + " ipv4:" + address)+len(nextRecordSet) <= 255:
 			spfList.append(" ipv4:")
 			spfList.append(address)	
 			spfFormat = spfFormat + " ipv4:" + address 
 			formatCounter += 1
+
+		#if not print the current list
 		else:
-			if spfNumber < 1:
+			#if spfNumber is 0 then output 
+			if spfNumber == 0:
 				spfNumber += 1
-				nextRecordSet =  " include:_spf"+ str(int(spfNumber)) +".riskanalytics.com"
+				nextRecordSet =  " include:_spf"+ str(int(spfNumber)) + "." + str(domain)
 				spfList.append(nextRecordSet)
-				logging.warning("riskanalytics.com.           IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n")
+				logging.warning(str(domain) + ".           IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n")
 			else:
 				spfNumber += 1
-				nextRecordSet =  " include:_spf"+ str(int(spfNumber)) +".riskanalytics.com"
+				nextRecordSet =  " include:_spf"+ str(int(spfNumber)) + str(domain)
 				spfList.append(nextRecordSet)
-				logging.warning("_spf"+str(int(spfNumber-1))+".riskanalytics.com.     IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n")
+				logging.warning("_spf"+str(int(spfNumber-1))+ "." + str(domain) +".     IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n")
 			
 			addressList = [ipAddress for ipAddress in addressList if ipAddress not in spfList]
 			break
 	
-
+	#if the addressList still has elements run it again
 	if len(addressList) != 0:
 		ipv4Formatter(0, addressList, spfNumber)
+
+	#if addressList is empty add the value of spfNumber to a list to save its value
 	else:
 		varSaver.append(spfNumber)
 
-#format ipv6 records into standard output
+#format and output ipv6 records into standard output
 def ipv6Formatter(formatCounter, addressList, spfNumber):
 
         spfList = []
         spfFormat = "v=spf1"
         spfList.append(spfFormat)
-        nextRecordSet =  " include:_spf"+ str(int(spfNumber)) +".riskanalytics.com"
+        nextRecordSet =  " include:_spf"+ str(int(spfNumber)) + "." + str(domain)
+	
+	#go through every element in addressList
         for address in addressList:
-                if address == addressList[-1]:
+                #if the current address is the last in addressList output all values that are currently in spfList and exit function
+		if address == addressList[-1]:
                         spfList.append(" ipv6:")
                         spfList.append(address)
                         spfNumber += 1
-                        spfList.append(nextRecordSet)
-                        logging.warning("_spf"+str(int(spfNumber-1))+".riskanalytics.com.     IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n")
+                        logging.warning("_spf"+str(int(spfNumber-1))+ "." + str(domain) + ".     IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n")
                         varSaver.append(spfNumber)
                         return
 
+		#if the address and formating are less than or equal to 255 add it to a list
                 if len(spfFormat + " ipv6:" + address)+len(nextRecordSet) <= 255:
                         spfList.append(" ipv6:")
                         spfList.append(address)
                         spfFormat = spfFormat + " ipv6:" + address
                         formatCounter += 1
+
+		#if not print the current list
                 else:
                         if spfNumber < 1:
                                 spfNumber += 1
-                                nextRecordSet =  " include:_spf"+ str(int(spfNumber)) +".riskanalytics.com"
+                                nextRecordSet =  " include:_spf"+ str(int(spfNumber)) + "." + str(domain)
                                 spfList.append(nextRecordSet)
-                                logging.warning("riskanalytics.com.           IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n")
+                                logging.warning(str(domain) + ".           IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n")
                         else:
                                 spfNumber += 1
-                                nextRecordSet =  " include:_spf"+ str(int(spfNumber)) +".riskanalytics.com"
+                                nextRecordSet =  " include:_spf"+ str(int(spfNumber)) + "." + str(domain)
                                 spfList.append(nextRecordSet)
-                                logging.warning("_spf"+str(int(spfNumber-1))+".riskanalytics.com.     IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n")
+                                logging.warning("_spf"+str(int(spfNumber-1))+ "." + str(domain) +".     IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n")
 
                         addressList = [ipAddress for ipAddress in addressList if ipAddress not in spfList]
                         break
@@ -273,16 +297,13 @@ ipv6List.extend(quadAResponseList)
 
 ipv4ListCopy = ipv4List
 ipv6ListCopy = ipv6List
-if toDeep:
-	logging.warning("Maximum Depth Was Reached")
 
-print(len(ipv4List))
 varSaver = []
 
 if len(ipv4List) != 0:
 	ipv4Formatter(counter, ipv4ListCopy, spfNumber)
 	spfNumber = int(varSaver[0])
-print(len(ipv6List))
+
 if len(ipv6List) != 0:
 	ipv6Formatter(counter, ipv6ListCopy, spfNumber)
 
