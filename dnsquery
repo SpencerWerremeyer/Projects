@@ -6,6 +6,7 @@ import re
 import sys
 import optparse
 import logging
+import socket
 
 usage = "usage: %prog give the program a DNS a Name Server IP and a maximum recursion depth. example: dnsquery google.com 8.8.8.8 50"
 parser = optparse.OptionParser(usage=usage)
@@ -159,10 +160,10 @@ def ipv4Formatter(formatCounter, addressList, spfNumber):
 				spfList.append(nextRecordSet)
 					
 			if spfNumber == 1:
-				logging.warning(str(domain) +".     IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n")
+				logging.warning(str(domain) +".     IN    TXT  \"" + str("".join(spfList)) + "\"")
 			
 			else:
-				logging.warning("_spf"+str(int(spfNumber-1))+ "." + str(domain) +".     IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n") 
+				logging.warning("_spf"+str(int(spfNumber-1))+ "." + str(domain) +".     IN    TXT  \"" + str("".join(spfList)) + "\"") 
 			varSaver.append(spfNumber)
 			return
 
@@ -180,13 +181,13 @@ def ipv4Formatter(formatCounter, addressList, spfNumber):
 				spfNumber += 1
 				nextRecordSet =  " include:_spf"+ str(int(spfNumber)) + "." + str(domain)
 				spfList.append(nextRecordSet)
-				logging.warning(str(domain) + ".           IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n")
+				logging.warning(str(domain) + ".           IN    TXT  \"" + str("".join(spfList)) + "\"")
 			#if spfNumber is not 0 print to this format
 			else:
 				spfNumber += 1
 				nextRecordSet =  " include:_spf"+ str(int(spfNumber)) + "." + str(domain)
 				spfList.append(nextRecordSet)
-				logging.warning("_spf"+str(int(spfNumber-1))+ "." + str(domain) +".     IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n")
+				logging.warning("_spf"+str(int(spfNumber-1))+ "." + str(domain) +".     IN    TXT  \"" + str("".join(spfList)) + "\"")
 			
 			#remove used addresses from addressList
 			addressList = [ipAddress for ipAddress in addressList if ipAddress not in spfList]
@@ -215,7 +216,7 @@ def ipv6Formatter(formatCounter, addressList, spfNumber):
                         spfList.append(" ipv6:")
                         spfList.append(address)
                         spfNumber += 1
-                        logging.warning("_spf"+str(int(spfNumber-1))+ "." + str(domain) + ".     IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n")
+                        logging.warning("_spf"+str(int(spfNumber-1))+ "." + str(domain) + ".     IN    TXT  \"" + str("".join(spfList)) + "\"")
                         varSaver.append(spfNumber)
                         return
 
@@ -233,13 +234,13 @@ def ipv6Formatter(formatCounter, addressList, spfNumber):
                                 spfNumber += 1
                                 nextRecordSet =  " include:_spf"+ str(int(spfNumber)) + "." + str(domain)
                                 spfList.append(nextRecordSet)
-                                logging.warning(str(domain) + ".           IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n")
+                                logging.warning(str(domain) + ".           IN    TXT  \"" + str("".join(spfList)) + "\"")
                         #if spfNumber is not 0 print to this format
 			else:
                                 spfNumber += 1
                                 nextRecordSet =  " include:_spf"+ str(int(spfNumber)) + "." + str(domain)
                                 spfList.append(nextRecordSet)
-                                logging.warning("_spf"+str(int(spfNumber-1))+ "." + str(domain) +".     IN    TXT  \"" + str("".join(spfList)) + "\"" + "\n")
+                                logging.warning("_spf"+str(int(spfNumber-1))+ "." + str(domain) +".     IN    TXT  \"" + str("".join(spfList)) + "\"")
 			
 			#remove used addresses from addressList
                         addressList = [ipAddress for ipAddress in addressList if ipAddress not in spfList]
@@ -311,6 +312,15 @@ domainSearch(domain, counter)
 ipv4List.extend(aResponseList)
 ipv6List.extend(quadAResponseList)
 
+
+#sort ipv4 addresses numerically
+for ipAddress in range(len(ipv4List)):
+    ipv4List[ipAddress] = "%3s.%3s.%3s.%3s" % tuple(ipv4List[ipAddress].split("."))
+ipv4List.sort()
+for ipAddress in range(len(ipv4List)):
+    ipv4List[ipAddress] = ipv4List[ipAddress].replace(" ", "")
+
+
 ipv4ListCopy = ipv4List
 ipv6ListCopy = ipv6List
 
@@ -324,8 +334,14 @@ if len(ipv6List) != 0:
 	ipv6Formatter(counter, ipv6ListCopy, spfNumber)
 
 
-logging.info("ipv4:" + (" ipv4:".join(ipv4List))+'\n')
-logging.info("ipv6:" + (" ipv6:".join(ipv6List))+'\n')
-logging.info(aResponseList)
-logging.info(quadAResponseList)
+
+if options.verbose == True:
+	sys.stderr.write("All ipv4 addresses found without reformatting" + '\n')
+	sys.stderr.write("ipv4:" + (" ipv4:".join(ipv4List)) + '\n')
+	sys.stderr.write("All ipv6 addresses found without reformatting" + '\n')
+	sys.stderr.write("ipv6:" + (" ipv6:".join(ipv6List)) + '\n')
+	sys.stderr.write("IPV4 addresses found while checking A records" + '\n')
+	sys.stderr.write(" ".join(aResponseList) + '\n')
+	sys.stderr.write("IPV6 addresses found while checking AAAA records" + '\n')
+	sys.stderr.write(" ".join(quadAResponseList) + '\n')
 
