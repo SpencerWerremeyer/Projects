@@ -7,6 +7,7 @@ import sys
 import optparse
 import logging
 import socket
+import netaddr
 
 usage = "usage: %prog give the program a DNS a Name Server IP and a maximum recursion depth. example: dnsquery google.com 8.8.8.8 50"
 parser = optparse.OptionParser(usage=usage)
@@ -152,7 +153,7 @@ def ipv4Formatter(formatCounter, addressList, spfNumber):
 	for address in addressList:
 		#if the current address is the last in addressList output all values that are currently in spfList and exit function
 		if address == addressList[-1]:
-			spfList.append(" ipv4:")
+			spfList.append(" ip4:")
                         spfList.append(address)
 			spfNumber += 1
 			nextRecordSet =  " include:_spf"+ str(int(spfNumber)) + "." + str(domain)
@@ -168,10 +169,10 @@ def ipv4Formatter(formatCounter, addressList, spfNumber):
 			return
 
 		#if the address and formating are less than or equal to 255 add it to a list
-		if len(spfFormat + " ipv4:" + address)+len(nextRecordSet) <= 255:
-			spfList.append(" ipv4:")
+		if len(spfFormat + " ip4:" + address)+len(nextRecordSet) <= 255:
+			spfList.append(" ip4:")
 			spfList.append(address)	
-			spfFormat = spfFormat + " ipv4:" + address 
+			spfFormat = spfFormat + " ip4:" + address 
 			formatCounter += 1
 
 		#if not print the current list
@@ -213,7 +214,7 @@ def ipv6Formatter(formatCounter, addressList, spfNumber):
         for address in addressList:
                 #if the current address is the last in addressList output all values that are currently in spfList and exit function
 		if address == addressList[-1]:
-                        spfList.append(" ipv6:")
+                        spfList.append(" ip6:")
                         spfList.append(address)
                         spfNumber += 1
                         logging.warning("_spf"+str(int(spfNumber-1))+ "." + str(domain) + ".     IN    TXT  \"" + str("".join(spfList)) + "\"")
@@ -221,10 +222,10 @@ def ipv6Formatter(formatCounter, addressList, spfNumber):
                         return
 
 		#if the address and formating are less than or equal to 255 add it to a list
-                if len(spfFormat + " ipv6:" + address)+len(nextRecordSet) <= 255:
-                        spfList.append(" ipv6:")
+                if len(spfFormat + " ip6:" + address)+len(nextRecordSet) <= 255:
+                        spfList.append(" ip6:")
                         spfList.append(address)
-                        spfFormat = spfFormat + " ipv6:" + address
+                        spfFormat = spfFormat + " ip6:" + address
                         formatCounter += 1
 
 		#if not print the current list
@@ -315,11 +316,20 @@ ipv6List.extend(quadAResponseList)
 
 #sort ipv4 addresses numerically
 for ipAddress in range(len(ipv4List)):
-    ipv4List[ipAddress] = "%3s.%3s.%3s.%3s" % tuple(ipv4List[ipAddress].split("."))
+	ipv4List[ipAddress] = "%3s.%3s.%3s.%3s" % tuple(ipv4List[ipAddress].split("."))
 ipv4List.sort()
 for ipAddress in range(len(ipv4List)):
-    ipv4List[ipAddress] = ipv4List[ipAddress].replace(" ", "")
+	ipv4List[ipAddress] = ipv4List[ipAddress].replace(" ", "")
 
+for ipAddress in range(len(ipv6List)):
+	ipv6List[ipAddress] = (netaddr.IPNetwork(ipv6List[ipAddress]))
+	ipv6List[ipAddress] =  int(ipv6List[ipAddress].ip)
+
+ipv6List.sort()
+
+for ipAddress in range(len(ipv6List)):
+	ipv6List[ipAddress] = str(netaddr.IPAddress(ipv6List[ipAddress]))
+	ipv6List[ipAddress] = ipv6List[ipAddress].replace(" ","")
 
 ipv4ListCopy = ipv4List
 ipv6ListCopy = ipv6List
