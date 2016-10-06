@@ -321,6 +321,8 @@ ipv4List.sort()
 for ipAddress in range(len(ipv4List)):
 	ipv4List[ipAddress] = ipv4List[ipAddress].replace(" ", "")
 
+ipv6ListCopy = ipv6List[:]
+
 for ipAddress in range(len(ipv6List)):
 	ipv6List[ipAddress] = (netaddr.IPNetwork(ipv6List[ipAddress]))
 	ipv6List[ipAddress] =  int(ipv6List[ipAddress].ip)
@@ -330,6 +332,12 @@ ipv6List.sort()
 for ipAddress in range(len(ipv6List)):
 	ipv6List[ipAddress] = str(netaddr.IPAddress(ipv6List[ipAddress]))
 	ipv6List[ipAddress] = ipv6List[ipAddress].replace(" ","")
+
+for ip in ipv6List:
+	if any(ip in string for string in ipv6ListCopy):
+		ipLocation = [ipAddress for ipAddress, s in enumerate(ipv6ListCopy) if ip in s]
+		ipv6List[ipv6List.index(str(ip))] = ipv6ListCopy[ipLocation[0]]
+
 
 ipv4ListCopy = ipv4List
 ipv6ListCopy = ipv6List
