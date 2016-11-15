@@ -54,10 +54,11 @@ def dirCheck(filePathMaster, filePathSlave):
     
              masterDirFilePath=(filePathMaster + '/' + file)
              slaveDirFilePath=(filePathSlave + '/' + file)
-	     
-	     if os.path.islink(masterDirFilePath):
-		logging.warning(syntaxError + masterDirFilePath + ' is a link')
-		usage()
+	     wasLink = False 
+	     if os.path.islink(masterDirFilePath) and os.path.islink(slaveDirFilePath):
+		masterDirFilePath = os.path.realpath(masterDirFilePath)
+		slaveDirFilePath = os.path.realpath(slaveDirFilePath)
+		wasLink = True
 	     if os.path.islink(slaveDirFilePath):
                 logging.warning(syntaxError + islaveDirFilePath + ' is a link')
                 usage()
@@ -87,16 +88,16 @@ def dirCheck(filePathMaster, filePathSlave):
 			   if hashMasterText == hashSlaveText:
 			      logging.info(masterDirFilePath + ' and ' + slaveDirFilePath + ' are the same. Removing ' + slaveDirFilePath)
 			      if options.dryRun == False:
-					os.remove(slaveDirFilePath)
+					if wasLink == True:
+						os.unlink(slaveDirFilePath)
+					else:
+						os.remove(slaveDirFilePath)
 			   else:
 			      logging.warning(syntaxError + 'different hash\'s')
-			      usage()
 			else:
 			   logging.warning(syntaxError + masterDirFilePath + " and " + slaveDirFilePath + " have different contents")
-			   usage()
             	else:
             	    logging.warning(syntaxError + masterDirFilePath + ' and ' + slaveDirFilePath + ' are not the same file.') 
-		    usage()
 
       for file in os.listdir(filePathSlave):
 	  masterFilePath=(filePathMaster + '/' + file)
