@@ -109,10 +109,10 @@ def dirCheck(filePathMaster, filePathSlave):
 			shutil.move(slaveFilePath, masterFilePath)		
 
    elif os.path.isdir(filePathMaster) and os.path.isdir(filePathSlave) == False:
-      logging.warning(filePathSlave + ' is not a directory')
+      logging.info(filePathSlave + ' is not a directory')
       
    elif os.path.isdir(filePathMaster) == False and os.path.isdir(filePathSlave):
-      logging.warning(filePathMaster + ' is not a directory')   
+      logging.info(filePathMaster + ' is not a directory')   
 
 
    if os.path.isdir(filePathSlave):
