@@ -7,6 +7,7 @@ import hashlib
 import md5
 import optparse
 import logging
+import stat
 
 usage = "usage: %prog give the program the name of two directories arg1 arg2 [options]"
 parser = optparse.OptionParser(usage=usage)
@@ -40,10 +41,17 @@ def usage():
 			print(options)
 	sys.exit(10)
 
+def checkLink(filePathMaster, filePathSlave):
+	masterDirFilePath = os.path.realpath(filePathMaster)
+        slaveDirFilePath = os.path.realpath(filePathSlave)
+	if masterDirFilePath == slaveDirFilePath:
+		os.unlink(filePathSlave)
+		return True
+
 def dirCheck(filePathMaster, filePathSlave):
    	
    if os.path.isdir(filePathSlave):
-      if os.listdir(filePathSlave) == []:
+      if os.stat(filePathSlave).st_size == 0:
          if options.dryRun == False:
 		os.rmdir(filePathSlave)
 	
@@ -51,53 +59,65 @@ def dirCheck(filePathMaster, filePathSlave):
       logging.info('These are dirs ')
 
       for file in os.listdir(filePathMaster):
-    
+      
              masterDirFilePath=(filePathMaster + '/' + file)
              slaveDirFilePath=(filePathSlave + '/' + file)
 	     wasLink = False 
-	     if os.path.islink(masterDirFilePath) and os.path.islink(slaveDirFilePath):
-		masterDirFilePath = os.path.realpath(masterDirFilePath)
-		slaveDirFilePath = os.path.realpath(slaveDirFilePath)
-		wasLink = True
-	     if os.path.islink(slaveDirFilePath):
-                logging.warning(syntaxError + islaveDirFilePath + ' is a link')
-                usage()
 
-             dirCheck(masterDirFilePath, slaveDirFilePath)
-	     
-	     if os.path.isfile(masterDirFilePath) and os.path.isfile(slaveDirFilePath):
-                logging.info(masterDirFilePath + ' and ' + slaveDirFilePath+' are file\'s') 
+	     try: 
+		     masterMode = os.stat(masterDirFilePath).st_mode
+		     slaveMode = os.stat(slaveDirFilePath).st_mode
+
+		     if stat.S_ISBLK(masterMode) and stat.S_ISBLK(slaveMode):
+			os.remove(slaveDirFilePath)		    	
+ 
+		     elif stat.S_ISCHR(masterMode) and stat.S_ISCHR(slaveMode):
+                        os.remove(slaveDirFilePath)
+		     
+		     elif stat.S_ISSOCK(masterMode) and stat.S_ISSOCK(slaveMode):
+                        os.remove(slaveDirFilePath)
 		
+		     elif stat.S_ISFIFO(masterMode) and stat.S_ISFIFO(slaveMode):
+			os.remove(slaveDirFilePath)
+	     except:
+		pass
+ 
+	     if os.path.islink(masterDirFilePath) and os.path.islink(slaveDirFilePath):
+		wasLink = checkLink(masterDirFilePath, slaveDirFilePath)
+	
+		
+             dirCheck(masterDirFilePath, slaveDirFilePath)
+	     if not wasLink: 
+		     if os.path.isfile(masterDirFilePath) and os.path.isfile(slaveDirFilePath):
+			logging.info(masterDirFilePath + ' and ' + slaveDirFilePath+' are file\'s') 
+			
 
-		if os.stat(masterDirFilePath).st_size == os.stat(slaveDirFilePath).st_size:
-			openMaster=open(masterDirFilePath, 'rb')
-			openSlave=open(slaveDirFilePath, 'rb')
+			if os.stat(masterDirFilePath).st_size == os.stat(slaveDirFilePath).st_size:
+				openMaster=open(masterDirFilePath, 'rb')
+				openSlave=open(slaveDirFilePath, 'rb')
 
-			if openMaster.read(1024) == openSlave.read(1024):
-			   hashMaster=md5.new()
-			   hashMaster.update(openMaster.read())
-			   hashMasterText=hashMaster.hexdigest()
-		   
-			   hashSlave=md5.new()
-			   hashSlave.update(openMaster.read())
-			   hashSlaveText=hashMaster.hexdigest()
-		   
-			   logging.info("Master File hash: " + hashMasterText)
-			   logging.info("Slave File hash: " + hashSlaveText)
+				if openMaster.read(1024) == openSlave.read(1024):
+				   hashMaster=md5.new()
+				   hashMaster.update(openMaster.read())
+				   hashMasterText=hashMaster.hexdigest()
+			   
+				   hashSlave=md5.new()
+				   hashSlave.update(openMaster.read())
+				   hashSlaveText=hashMaster.hexdigest()
+			   
+				   logging.info("Master File hash: " + hashMasterText)
+				   logging.info("Slave File hash: " + hashSlaveText)
 
-			   if hashMasterText == hashSlaveText:
-			      logging.info(masterDirFilePath + ' and ' + slaveDirFilePath + ' are the same. Removing ' + slaveDirFilePath)
-			      if options.dryRun == False:
-					if wasLink == True:
-						os.unlink(slaveDirFilePath)
-					else:
-						os.remove(slaveDirFilePath)
-			   else:
-			      logging.warning(syntaxError + 'different hash\'s')
+				   if hashMasterText == hashSlaveText:
+				      logging.info(masterDirFilePath + ' and ' + slaveDirFilePath + ' are the same. Removing ' + slaveDirFilePath)
+				      if options.dryRun == False:
+					 os.remove(slaveDirFilePath)
+				   else:
+				      logging.warning(syntaxError + 'different hash\'s')
+				else:
+				   logging.warning(syntaxError + masterDirFilePath + " and " + slaveDirFilePath + " have different contents")
 			else:
-			   logging.warning(syntaxError + masterDirFilePath + " and " + slaveDirFilePath + " have different contents")
-            	else:
-            	    logging.warning(syntaxError + masterDirFilePath + ' and ' + slaveDirFilePath + ' are not the same file.') 
+			    logging.warning(syntaxError + masterDirFilePath + ' and ' + slaveDirFilePath + ' are not the same file.') 
 
       for file in os.listdir(filePathSlave):
 	  masterFilePath=(filePathMaster + '/' + file)
@@ -116,10 +136,20 @@ def dirCheck(filePathMaster, filePathSlave):
 
 
    if os.path.isdir(filePathSlave):
-      if os.listdir(filePathSlave) == []:
+      if os.stat(filePathSlave).st_size == 0:
          if options.dryRun == False:
 		os.rmdir(filePathSlave)
 
+
+def brokenSymLinkRemover(filePathSlave):
+	for filename in os.listdir(filePathSlave):
+		fullPath=(filePathSlave + '/' + filename)
+		if os.path.isdir(fullPath):
+			brokenSymLinkRemover(fullPath)
+		
+		if os.path.islink(fullPath):
+			if not os.path.exists(os.readlink(fullPath)):
+				os.remove(fullPath)
 
 if options.optionUsage == True:
 	usage()
@@ -142,4 +172,4 @@ else:
 	slaveDir=sys.argv[2]
 
 dirCheck(masterDir, slaveDir)
-
+brokenSymLinkRemover(slaveDir)
