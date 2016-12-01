@@ -41,6 +41,8 @@ def usage():
 			print(options)
 	sys.exit(10)
 
+
+#checks symbolic link file paths and removes the link if the paths are the same
 def checkLink(filePathMaster, filePathSlave):
 	masterDirFilePath = os.path.realpath(filePathMaster)
         slaveDirFilePath = os.path.realpath(filePathSlave)
@@ -48,22 +50,25 @@ def checkLink(filePathMaster, filePathSlave):
 		os.unlink(filePathSlave)
 		return True
 
+
+#compares two directories and removes files that are the same from the second directory
+#if there is an original file in the second directory it is moved to the first and removed from the second
 def dirCheck(filePathMaster, filePathSlave):
-   	
-   if os.path.isdir(filePathSlave):
-      if os.stat(filePathSlave).st_size == 0:
-         if options.dryRun == False:
-		os.rmdir(filePathSlave)
-	
+
+   #checks to make sure that two valid directories were given
    if os.path.isdir(filePathMaster) and os.path.isdir(filePathSlave):
       logging.info('These are dirs ')
 
+      #iterates through all the files in the Master file path
       for file in os.listdir(filePathMaster):
-      
+      	     
+ 	     #Changes the file path to the full file path
              masterDirFilePath=(filePathMaster + '/' + file)
              slaveDirFilePath=(filePathSlave + '/' + file)
 	     wasLink = False 
-
+	     
+	     #check if the file is a Block, Charachter, Pipe or Socket
+	     #the file is removed from the slave directory if it is
 	     try: 
 		     masterMode = os.stat(masterDirFilePath).st_mode
 		     slaveMode = os.stat(slaveDirFilePath).st_mode
@@ -82,21 +87,26 @@ def dirCheck(filePathMaster, filePathSlave):
 	     except:
 		pass
  
+	     #checks if the file paths are symbolic links
 	     if os.path.islink(masterDirFilePath) and os.path.islink(slaveDirFilePath):
 		wasLink = checkLink(masterDirFilePath, slaveDirFilePath)
 	
-		
+	     #calls itself to get to any directories inside the current directory
              dirCheck(masterDirFilePath, slaveDirFilePath)
+	     #if the file paths were not links check the normal files
 	     if not wasLink: 
+		     #verify that the two given file paths are valid file paths
 		     if os.path.isfile(masterDirFilePath) and os.path.isfile(slaveDirFilePath):
 			logging.info(masterDirFilePath + ' and ' + slaveDirFilePath+' are file\'s') 
 			
-
+			#check if the two file paths are the same size
 			if os.stat(masterDirFilePath).st_size == os.stat(slaveDirFilePath).st_size:
 				openMaster=open(masterDirFilePath, 'rb')
 				openSlave=open(slaveDirFilePath, 'rb')
-
+				
+				#verify that the first 1024 bytes in the file path are the same
 				if openMaster.read(1024) == openSlave.read(1024):
+				   #hash both of the file paths
 				   hashMaster=md5.new()
 				   hashMaster.update(openMaster.read())
 				   hashMasterText=hashMaster.hexdigest()
@@ -107,9 +117,11 @@ def dirCheck(filePathMaster, filePathSlave):
 			   
 				   logging.info("Master File hash: " + hashMasterText)
 				   logging.info("Slave File hash: " + hashSlaveText)
-
+				   
+				   #check if the hashes are the same
 				   if hashMasterText == hashSlaveText:
 				      logging.info(masterDirFilePath + ' and ' + slaveDirFilePath + ' are the same. Removing ' + slaveDirFilePath)
+				      #remove the slave file path
 				      if options.dryRun == False:
 					 os.remove(slaveDirFilePath)
 				   else:
@@ -117,8 +129,10 @@ def dirCheck(filePathMaster, filePathSlave):
 				else:
 				   logging.warning(syntaxError + masterDirFilePath + " and " + slaveDirFilePath + " have different contents")
 			else:
-			    logging.warning(syntaxError + masterDirFilePath + ' and ' + slaveDirFilePath + ' are not the same file.') 
-
+			    logging.warning(syntaxError + masterDirFilePath + ' and ' + slaveDirFilePath + ' are not the same file.')
+ 
+      #iterate through the slave file path and move files that are not present in 
+      #master file to it
       for file in os.listdir(filePathSlave):
 	  masterFilePath=(filePathMaster + '/' + file)
           slaveFilePath=(filePathSlave + '/' + file)
@@ -128,19 +142,7 @@ def dirCheck(filePathMaster, filePathSlave):
 		if options.dryRun == False:
 			shutil.move(slaveFilePath, masterFilePath)		
 
-   elif os.path.isdir(filePathMaster) and os.path.isdir(filePathSlave) == False:
-      logging.info(filePathSlave + ' is not a directory')
-      
-   elif os.path.isdir(filePathMaster) == False and os.path.isdir(filePathSlave):
-      logging.info(filePathMaster + ' is not a directory')   
-
-
-   if os.path.isdir(filePathSlave):
-      if os.stat(filePathSlave).st_size == 0:
-         if options.dryRun == False:
-		os.rmdir(filePathSlave)
-
-
+#iterate through the second file path to remove broken symbolic links
 def brokenSymLinkRemover(filePathSlave):
 	for filename in os.listdir(filePathSlave):
 		fullPath=(filePathSlave + '/' + filename)
@@ -151,15 +153,27 @@ def brokenSymLinkRemover(filePathSlave):
 			if not os.path.exists(os.readlink(fullPath)):
 				os.remove(fullPath)
 
+#iterate through the second file path to remove empty directories
+def removeEmptyDirs(filePathSlave):
+        for filename in os.listdir(filePathSlave):
+                fullPath=(filePathSlave + '/' + filename)
+		if os.path.isdir(fullPath):
+			removeEmptyDirs(fullPath)
+			if os.listdir(fullPath) == []:
+				os.rmdir(fullPath)
+
+#check for to see if the -u/--usage was used when the program was run
 if options.optionUsage == True:
 	usage()
 
+#check to see if the dryrun run option was used when the program was run
 if options.dryRun == True:
         options.verbose = True
 
 
 logging.basicConfig(level=logging.WARNING if not options.verbose else logging.INFO, format="%(message)s")
 
+#check for verbose mode when program is run
 if options.verbose == True:
 	try:
 		masterDir=sys.argv[2]
@@ -171,5 +185,7 @@ else:
 	masterDir=sys.argv[1]
 	slaveDir=sys.argv[2]
 
+
 dirCheck(masterDir, slaveDir)
 brokenSymLinkRemover(slaveDir)
+removeEmptyDirs(slaveDir)
