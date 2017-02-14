@@ -163,7 +163,7 @@ func main() {
   OriginalLabel := ""
   CheckedLabel := ""
   OriginalLabelName := ""
-  var systemName []string
+
 
   if (len(LabelList.Labels) > 0) {
     for _, currentLabel := range LabelList.Labels {
@@ -252,20 +252,13 @@ func main() {
               timeFMT = ""
 
             }else if strings.Contains(regexValue, "2006"){
-              timeSplit := strings.Split(regexValue, "/")
-              // fmt.Println(timeSplit[0])
-              if timeSplit[0] == "2006" {
-                upsTime := regexValue
-              }
               timeFMT = regexValue
             }
 
             stringToPrint := compiledVar.FindAllString(stringMessage, 1)
 
 
-            if strings.Contains(regexValue, "System Name: ") {
-              systemName = stringToPrint
-            }
+
 
             if len(stringToPrint) != 0{
               fmt.Println(stringToPrint)
@@ -275,10 +268,6 @@ func main() {
             mod := &gmail.ModifyMessageRequest{AddLabelIds: label}
             srv.Users.Messages.Modify(user, message, mod).Do()
           }
-          if len(systemName) != 0{
-            fmt.Println(systemName)
-          }
-          fmt.Println(upsTime)
           fmt.Println()
 
 
