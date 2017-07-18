@@ -251,10 +251,10 @@ def lambda_handler(event, context):
 
     # Send Email
     email = sesClient.send_email(
-        Source = 'sysops@riskanalytics.com',
+        Source = 'example@email.com',
         Destination={
             'ToAddresses' : [
-                 'swerremeyer@riskanalytics.com', #'bcrook@riskanalytics.com',
+                 'destination@email.com',
             ],
         },
         Message= {
